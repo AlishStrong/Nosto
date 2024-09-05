@@ -6,3 +6,39 @@ content-type: application/json
     "targetCurrency": "GBP",
     "monetaryValue": 30
 }
+
+####
+
+POST http://localhost:8080/api HTTP/1.1
+content-type: application/json
+
+{
+    "sourceCurrency": "USD",
+    "targetCurrency": "GBP"
+}
+
+####
+
+POST http://localhost:8080/api HTTP/1.1
+content-type: application/json
+
+{
+    "sourceCurrency": "USD",
+    "targetCurrency": "GBP",
+    "monetaryValue": null
+}
+
+####
+
+GET https://swop.cx/rest/rates/EUR/USD
+Authorization: ApiKey {{apikey}}
+
+####
+
+GET https://swop.cx/rest/rates/USD/EUR
+Authorization: ApiKey {{apikey}}
+
+####
+
+GET https://swop.cx/rest/rates
+Authorization: ApiKey {{apikey}}
