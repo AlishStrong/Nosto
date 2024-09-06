@@ -5,30 +5,48 @@ import java.math.RoundingMode;
 
 import org.springframework.stereotype.Service;
 
+import fi.alisher.backend.clients.SwopClient;
 import fi.alisher.backend.models.ExchangeRateRequestBody;
 
 @Service
 public class CurrencyConversionService {
-    private BigDecimal quoteOne = new BigDecimal("1.110414"); // EUR to USD on 06.09.2024
-    private BigDecimal quoteTwo = new BigDecimal("0.843216"); // EUR to GBP on 06.09.2024
+    private SwopClient swopClient;
 
-    public BigDecimal convertCurrency(ExchangeRateRequestBody body) {
+    public CurrencyConversionService(
+        SwopClient swopClient
+    ) {
+        this.swopClient = swopClient;
+    }
+
+    public BigDecimal convertCurrency(ExchangeRateRequestBody body) throws Exception {
         if ("eur".equalsIgnoreCase(body.getSourceCurrency())  && !"eur".equalsIgnoreCase(body.getTargetCurrency())) {
-            BigDecimal toTarget = body.getMonetaryValue().multiply(quoteOne);
+            BigDecimal quote = getQuote(body.getTargetCurrency());
+            BigDecimal toTarget = body.getMonetaryValue().multiply(quote);
+            
             BigDecimal result = toTarget.setScale(2, RoundingMode.HALF_UP);
             return result;
         } else if (!"eur".equalsIgnoreCase(body.getSourceCurrency()) && "eur".equalsIgnoreCase(body.getTargetCurrency())) {
-            BigDecimal toEur = body.getMonetaryValue().divide(quoteOne, 6, RoundingMode.HALF_UP);
+            BigDecimal quoteToEur = getQuote(body.getSourceCurrency());
+            BigDecimal toEur = body.getMonetaryValue().divide(quoteToEur, 6, RoundingMode.HALF_UP);
+            
             BigDecimal result = toEur.setScale(2, RoundingMode.HALF_UP);
             return result;
         } else if (body.getSourceCurrency().equalsIgnoreCase(body.getTargetCurrency())) {
             return body.getMonetaryValue().setScale(2, RoundingMode.HALF_UP);
         } 
         else {
-            BigDecimal toEur = body.getMonetaryValue().divide(quoteOne, 6, RoundingMode.HALF_UP);
-            BigDecimal toTarget = toEur.multiply(quoteTwo);
-            BigDecimal result = toTarget.setScale(2, RoundingMode.HALF_UP);
+            BigDecimal quoteToEur = getQuote(body.getSourceCurrency());
+            BigDecimal sourcetoEur = body.getMonetaryValue().divide(quoteToEur, 6, RoundingMode.HALF_UP);
+
+            BigDecimal quoteToTarget = getQuote(body.getTargetCurrency());
+            BigDecimal eurToTarget = sourcetoEur.multiply(quoteToTarget);
+
+            BigDecimal result = eurToTarget.setScale(2, RoundingMode.HALF_UP);
             return result;
         }
+    }
+
+    private BigDecimal getQuote(String targetCurrency) throws Exception {
+        return swopClient.getSingleQuote(targetCurrency);
     }
 }

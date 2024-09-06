@@ -28,7 +28,7 @@ public class ExchangeRateController {
     }
     
     @PostMapping
-    public BigDecimal convertCurrency(@Valid @RequestBody ExchangeRateRequestBody body) {
+    public BigDecimal convertCurrency(@Valid @RequestBody ExchangeRateRequestBody body) throws Exception {
         return conversionService.convertCurrency(body);
     }
     
