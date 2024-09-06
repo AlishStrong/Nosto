@@ -77,7 +77,7 @@ public class ExchangeRateControllerTest {
         String incorrectMonetaryValue_empty = " ";
         String incorrectMonetaryValue_notnumeric = "not numeric";
 
-        int errorResponseStatus = HttpStatus.I_AM_A_TEAPOT.value();
+        int errorResponseStatus = HttpStatus.BAD_REQUEST.value();
         String errorResponseBody = "Request body was invalid!";
 
 

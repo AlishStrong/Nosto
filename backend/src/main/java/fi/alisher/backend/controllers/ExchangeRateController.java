@@ -1,8 +1,11 @@
 package fi.alisher.backend.controllers;
 
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.HttpServerErrorException;
 
 import fi.alisher.backend.models.ExchangeRateRequestBody;
+import fi.alisher.backend.models.SwopError;
 import fi.alisher.backend.services.CurrencyConversionService;
 import jakarta.validation.Valid;
 
@@ -34,11 +37,25 @@ public class ExchangeRateController {
     
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<String> handleMethodArgumentNotValidException(MethodArgumentNotValidException ex) {
-        return ResponseEntity.status(HttpStatus.I_AM_A_TEAPOT).body("Request body was invalid!");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Request body was invalid!");
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<String> handleHttpMessageNotReadableException(HttpMessageNotReadableException ex) {
-        return ResponseEntity.status(HttpStatus.I_AM_A_TEAPOT).body("Request body was invalid!");
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body("Request body was invalid!");
+    }
+
+    @ExceptionHandler(HttpClientErrorException.class)
+    public ResponseEntity<String> handleHttpClientErrorException(HttpClientErrorException ex) {
+        System.out.println(ex.getResponseBodyAsString());
+        SwopError errorResponseBody = ex.getResponseBodyAs(SwopError.class);
+        return ResponseEntity.status(ex.getStatusCode()).body(errorResponseBody.getError().getMessage());
+    }
+
+    @ExceptionHandler(HttpServerErrorException.class)
+    public ResponseEntity<String> handleHttpServerErrorException(HttpServerErrorException ex) {
+        System.out.println(ex.getResponseBodyAsString());
+        SwopError errorResponseBody = ex.getResponseBodyAs(SwopError.class);
+        return ResponseEntity.status(ex.getStatusCode()).body(errorResponseBody.getError().getMessage());
     }
 }
