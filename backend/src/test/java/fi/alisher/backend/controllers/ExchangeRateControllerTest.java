@@ -5,14 +5,21 @@ import org.junit.jupiter.params.provider.Arguments;
 import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
-import java.math.BigDecimal;
 
+import fi.alisher.backend.models.ExchangeRateRequestBody;
+import fi.alisher.backend.services.CurrencyConversionService;
+
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.stream.Stream;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.when;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.*;
 
 @WebMvcTest(controllers = {ExchangeRateController.class})
@@ -21,9 +28,17 @@ public class ExchangeRateControllerTest {
     @Autowired
     private MockMvc mockMvc;
 
+    @MockBean
+    private CurrencyConversionService conversionService;
+
     @ParameterizedTest
     @MethodSource("requestData")
-    public void testPostMethodNameWithMissingProperties(String requestBodyJson, int responseStatus, String responseBody) throws Exception {
+    public void convertCurrency(String requestBodyJson, int responseStatus, String responseBody) throws Exception {
+       
+        if (responseStatus == 200) {
+            when(conversionService.convertCurrency(any(ExchangeRateRequestBody.class))).thenReturn(new BigDecimal(responseBody));
+        }
+
         mockMvc.perform(MockMvcRequestBuilders
                 .post("/api")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -33,14 +48,16 @@ public class ExchangeRateControllerTest {
     }
 
     private static Stream<Arguments> requestData() {
+        BigDecimal testQuote = new BigDecimal("1.110414");
+
         // correct values
         String correctSourceCurrency = "EUR";
         String correctTargetCurrency = "USD";
         BigDecimal correctMonetaryValue_whole = new BigDecimal(30);
         BigDecimal correctMonetaryValue_cented = new BigDecimal("30.15");
         int okResponseStatus = HttpStatus.OK.value();
-        String okResponseBody_whole = correctMonetaryValue_whole.toPlainString();
-        String okResponseBody_cented = correctMonetaryValue_cented.toPlainString();
+        String okResponseBody_whole = correctMonetaryValue_whole.multiply(testQuote).setScale(2, RoundingMode.HALF_UP).toPlainString();
+        String okResponseBody_cented = correctMonetaryValue_cented.multiply(testQuote).setScale(2, RoundingMode.HALF_UP).toPlainString();
 
         String irrelevantField = "\"irrelevant\": \"field\"";
 
@@ -50,6 +67,7 @@ public class ExchangeRateControllerTest {
         String incorrectSourceCurrency_null = null;
         String incorrectSourceCurrency_nullstr = "null";
         String incorrectSourceCurrency_empty = " ";
+        String incorrectSourceCurrency_nonletter = "123";
 
         BigDecimal incorrectMonetaryValue_whole = new BigDecimal(0);
         BigDecimal incorrectMonetaryValue_cented = new BigDecimal(0.0);
@@ -76,6 +94,7 @@ public class ExchangeRateControllerTest {
             Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"targetCurrency\": \"%s\", \"monetaryValue\": %s }", incorrectSourceCurrency_null, correctTargetCurrency, correctMonetaryValue_whole), errorResponseStatus, errorResponseBody),
             Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"targetCurrency\": \"%s\", \"monetaryValue\": %s }", incorrectSourceCurrency_nullstr, correctTargetCurrency, correctMonetaryValue_whole), errorResponseStatus, errorResponseBody),
             Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"targetCurrency\": \"%s\", \"monetaryValue\": %s }", incorrectSourceCurrency_empty, correctTargetCurrency, correctMonetaryValue_whole), errorResponseStatus, errorResponseBody),
+            Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"targetCurrency\": \"%s\", \"monetaryValue\": %s }", incorrectSourceCurrency_nonletter, correctTargetCurrency, correctMonetaryValue_whole), errorResponseStatus, errorResponseBody),
             Arguments.of(String.format("{ \"targetCurrency\": \"%s\", \"monetaryValue\": %s }", correctTargetCurrency, correctMonetaryValue_whole), errorResponseStatus, errorResponseBody),
             Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"monetaryValue\": %s }", correctSourceCurrency, correctMonetaryValue_whole), errorResponseStatus, errorResponseBody),
 

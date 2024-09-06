@@ -3,6 +3,7 @@ package fi.alisher.backend.controllers;
 import org.springframework.web.bind.annotation.RestController;
 
 import fi.alisher.backend.models.ExchangeRateRequestBody;
+import fi.alisher.backend.services.CurrencyConversionService;
 import jakarta.validation.Valid;
 
 import org.springframework.http.HttpStatus;
@@ -19,10 +20,16 @@ import java.math.BigDecimal;
 @RestController
 @RequestMapping("/api")
 public class ExchangeRateController {
+
+    private CurrencyConversionService conversionService;
+
+    public ExchangeRateController(CurrencyConversionService conversionService) {
+        this.conversionService = conversionService;
+    }
     
     @PostMapping
     public BigDecimal convertCurrency(@Valid @RequestBody ExchangeRateRequestBody body) {
-        return body.getMonetaryValue();
+        return conversionService.convertCurrency(body);
     }
     
     @ExceptionHandler(MethodArgumentNotValidException.class)
