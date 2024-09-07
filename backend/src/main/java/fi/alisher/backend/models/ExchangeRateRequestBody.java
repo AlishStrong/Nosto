@@ -1,6 +1,8 @@
 package fi.alisher.backend.models;
 
+import lombok.AllArgsConstructor;
 import lombok.Data;
+import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 
@@ -10,6 +12,8 @@ import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.DecimalMin;
 
 @Data
+@AllArgsConstructor
+@NoArgsConstructor
 public class ExchangeRateRequestBody {
 
     @NotNull

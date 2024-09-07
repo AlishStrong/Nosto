@@ -10,12 +10,15 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.request.MockMvcRequestBuilders;
+import org.springframework.web.servlet.LocaleResolver;
 
 import fi.alisher.backend.models.ExchangeRateRequestBody;
 import fi.alisher.backend.services.CurrencyConversionService;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.math.BigDecimal;
-import java.math.RoundingMode;
+import java.util.Locale;
+import java.util.Objects;
 import java.util.stream.Stream;
 
 import static org.mockito.ArgumentMatchers.any;
@@ -29,16 +32,33 @@ public class ExchangeRateControllerTest {
     private MockMvc mockMvc;
 
     @MockBean
+    private LocaleResolver localeResolver;
+
+    @MockBean
     private CurrencyConversionService conversionService;
 
     @ParameterizedTest
-    @MethodSource("requestData")
-    public void convertCurrency(String requestBodyJson, int responseStatus, String responseBody) throws Exception {
-       
-        if (responseStatus == 200) {
-            when(conversionService.convertCurrency(any(ExchangeRateRequestBody.class))).thenReturn(new BigDecimal(responseBody));
-        }
+    @MethodSource("requestSuccessData")
+    public void convertCurrency_successCases(
+        String requestBodyJson, 
+        String convertedValue, 
+        String localeFormattedConvertedValue,
+        Locale locale
+    ) throws Exception {
+        when(conversionService.convertCurrency(any(ExchangeRateRequestBody.class))).thenReturn(new BigDecimal(convertedValue));
+        when(localeResolver.resolveLocale(any(HttpServletRequest.class))).thenReturn(Objects.nonNull(locale) ? locale : Locale.US);
+        mockMvc.perform(MockMvcRequestBuilders
+            .post("/api")
+            .contentType(MediaType.APPLICATION_JSON)
+            .content(requestBodyJson))
+            .andExpect(status().isOk())
+            .andExpect(jsonPath("$.localeFormattedConvertedValue").value(localeFormattedConvertedValue))
+            .andExpect(jsonPath("$.locale").value(Objects.nonNull(locale) ? locale.toString() : Locale.US.toString()));
+    }
 
+    @ParameterizedTest
+    @MethodSource("requestErrorData")
+    public void convertCurrency_errorCases(String requestBodyJson, int responseStatus, String responseBody) throws Exception {
         mockMvc.perform(MockMvcRequestBuilders
                 .post("/api")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -47,19 +67,22 @@ public class ExchangeRateControllerTest {
                 .andExpect(content().string(responseBody));
     }
 
-    private static Stream<Arguments> requestData() {
-        BigDecimal testQuote = new BigDecimal("1.110414");
+    private static Stream<Arguments> requestSuccessData() {
+        return Stream.of(
+            Arguments.of(prepareRequestBodyJson("EUR", "USD", "12345612.789"), "12345612.789", "$12,345,612.79", null),
+            Arguments.of(prepareRequestBodyJson("EUR", "GBP", "1.15"), "1.15", "£1.15", null),
+            Arguments.of(prepareRequestBodyJson("EUR", "GBP", "12345612.789"), "12345612.789", "12.345.612,79 £", Locale.GERMANY),
+            Arguments.of(prepareRequestBodyJson("EUR", "JPY", "123456.789"), "123456.789", "123.457 ¥", Locale.GERMANY),
+            Arguments.of(prepareRequestBodyJson("EUR", "JPY", "1.15"), "1.15", "￥1", Locale.JAPAN),
+            Arguments.of(prepareRequestBodyJson("EUR", "USD", "1.15"), "1.15", "$1.15", Locale.JAPAN)
+        );
+    }
 
+    private static Stream<Arguments> requestErrorData() {
         // correct values
         String correctSourceCurrency = "EUR";
         String correctTargetCurrency = "USD";
-        BigDecimal correctMonetaryValue_whole = new BigDecimal(30);
-        BigDecimal correctMonetaryValue_cented = new BigDecimal("30.15");
-        int okResponseStatus = HttpStatus.OK.value();
-        String okResponseBody_whole = correctMonetaryValue_whole.multiply(testQuote).setScale(2, RoundingMode.HALF_UP).toPlainString();
-        String okResponseBody_cented = correctMonetaryValue_cented.multiply(testQuote).setScale(2, RoundingMode.HALF_UP).toPlainString();
-
-        String irrelevantField = "\"irrelevant\": \"field\"";
+        String correctMonetaryValue_whole = "30";
 
         // incorrect values 
         String incorrectSourceCurrency_short = "EU";
@@ -69,10 +92,10 @@ public class ExchangeRateControllerTest {
         String incorrectSourceCurrency_empty = " ";
         String incorrectSourceCurrency_nonletter = "123";
 
-        BigDecimal incorrectMonetaryValue_whole = new BigDecimal(0);
-        BigDecimal incorrectMonetaryValue_cented = new BigDecimal(0.0);
-        BigDecimal incorrectMonetaryValue_negative = new BigDecimal(-0.1);
-        BigDecimal incorrectMonetaryValue_null = null;
+        String incorrectMonetaryValue_whole = "0";
+        String incorrectMonetaryValue_cented = "0.0";
+        String incorrectMonetaryValue_negative = "-0.1";
+        String incorrectMonetaryValue_null = null;
         String incorrectMonetaryValue_nullstr = "null";
         String incorrectMonetaryValue_empty = " ";
         String incorrectMonetaryValue_notnumeric = "not numeric";
@@ -80,34 +103,40 @@ public class ExchangeRateControllerTest {
         int errorResponseStatus = HttpStatus.BAD_REQUEST.value();
         String errorResponseBody = "Request body was invalid!";
 
-
         return Stream.of(
-            // correct
-            Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"targetCurrency\": \"%s\", \"monetaryValue\": %s }", correctSourceCurrency, correctTargetCurrency, correctMonetaryValue_whole), okResponseStatus, okResponseBody_whole),
-            Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"targetCurrency\": \"%s\", \"monetaryValue\": \"%s\" }", correctSourceCurrency, correctTargetCurrency, correctMonetaryValue_whole), okResponseStatus, okResponseBody_whole),
-            Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"targetCurrency\": \"%s\", \"monetaryValue\": %s }", correctSourceCurrency, correctTargetCurrency, correctMonetaryValue_cented), okResponseStatus, okResponseBody_cented),
-            Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"targetCurrency\": \"%s\", \"monetaryValue\": %s, %s }", correctSourceCurrency, correctTargetCurrency, correctMonetaryValue_cented, irrelevantField), okResponseStatus, okResponseBody_cented),
-
             // incorrect currency values 
-            Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"targetCurrency\": \"%s\", \"monetaryValue\": %s }", incorrectSourceCurrency_short, correctTargetCurrency, correctMonetaryValue_whole), errorResponseStatus, errorResponseBody),
-            Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"targetCurrency\": \"%s\", \"monetaryValue\": %s }", incorrectSourceCurrency_long, correctTargetCurrency, correctMonetaryValue_whole), errorResponseStatus, errorResponseBody),
-            Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"targetCurrency\": \"%s\", \"monetaryValue\": %s }", incorrectSourceCurrency_null, correctTargetCurrency, correctMonetaryValue_whole), errorResponseStatus, errorResponseBody),
-            Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"targetCurrency\": \"%s\", \"monetaryValue\": %s }", incorrectSourceCurrency_nullstr, correctTargetCurrency, correctMonetaryValue_whole), errorResponseStatus, errorResponseBody),
-            Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"targetCurrency\": \"%s\", \"monetaryValue\": %s }", incorrectSourceCurrency_empty, correctTargetCurrency, correctMonetaryValue_whole), errorResponseStatus, errorResponseBody),
-            Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"targetCurrency\": \"%s\", \"monetaryValue\": %s }", incorrectSourceCurrency_nonletter, correctTargetCurrency, correctMonetaryValue_whole), errorResponseStatus, errorResponseBody),
+            Arguments.of(prepareRequestBodyJson(incorrectSourceCurrency_short, correctTargetCurrency, correctMonetaryValue_whole), errorResponseStatus, errorResponseBody),
+            Arguments.of(prepareRequestBodyJson(incorrectSourceCurrency_long, correctTargetCurrency, correctMonetaryValue_whole), errorResponseStatus, errorResponseBody),
+            Arguments.of(prepareRequestBodyJson(incorrectSourceCurrency_null, correctTargetCurrency, correctMonetaryValue_whole), errorResponseStatus, errorResponseBody),
+            Arguments.of(prepareRequestBodyJson(incorrectSourceCurrency_nullstr, correctTargetCurrency, correctMonetaryValue_whole), errorResponseStatus, errorResponseBody),
+            Arguments.of(prepareRequestBodyJson(incorrectSourceCurrency_empty, correctTargetCurrency, correctMonetaryValue_whole), errorResponseStatus, errorResponseBody),
+            Arguments.of(prepareRequestBodyJson(incorrectSourceCurrency_nonletter, correctTargetCurrency, correctMonetaryValue_whole), errorResponseStatus, errorResponseBody),
             Arguments.of(String.format("{ \"targetCurrency\": \"%s\", \"monetaryValue\": %s }", correctTargetCurrency, correctMonetaryValue_whole), errorResponseStatus, errorResponseBody),
             Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"monetaryValue\": %s }", correctSourceCurrency, correctMonetaryValue_whole), errorResponseStatus, errorResponseBody),
 
             // incorrect monetary values
-            Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"targetCurrency\": \"%s\", \"monetaryValue\": %s }", correctSourceCurrency, correctTargetCurrency, incorrectMonetaryValue_whole), errorResponseStatus, errorResponseBody),
-            Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"targetCurrency\": \"%s\", \"monetaryValue\": %s }", correctSourceCurrency, correctTargetCurrency, incorrectMonetaryValue_cented), errorResponseStatus, errorResponseBody),
-            Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"targetCurrency\": \"%s\", \"monetaryValue\": %s }", correctSourceCurrency, correctTargetCurrency, incorrectMonetaryValue_negative), errorResponseStatus, errorResponseBody),
-            Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"targetCurrency\": \"%s\", \"monetaryValue\": %s }", correctSourceCurrency, correctTargetCurrency, incorrectMonetaryValue_null), errorResponseStatus, errorResponseBody),
-            Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"targetCurrency\": \"%s\", \"monetaryValue\": %s }", correctSourceCurrency, correctTargetCurrency, incorrectMonetaryValue_nullstr), errorResponseStatus, errorResponseBody),
-            Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"targetCurrency\": \"%s\", \"monetaryValue\": %s }", correctSourceCurrency, correctTargetCurrency, incorrectMonetaryValue_empty), errorResponseStatus, errorResponseBody),
-            Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"targetCurrency\": \"%s\", \"monetaryValue\": %s }", correctSourceCurrency, correctTargetCurrency, incorrectMonetaryValue_notnumeric), errorResponseStatus, errorResponseBody),
-            Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"targetCurrency\": \"%s\", \"monetaryValue\": \"%s\" }", correctSourceCurrency, correctTargetCurrency, incorrectMonetaryValue_notnumeric), errorResponseStatus, errorResponseBody),
+            Arguments.of(prepareRequestBodyJson(correctSourceCurrency, correctTargetCurrency, incorrectMonetaryValue_whole), errorResponseStatus, errorResponseBody),
+            Arguments.of(prepareRequestBodyJson(correctSourceCurrency, correctTargetCurrency, incorrectMonetaryValue_cented), errorResponseStatus, errorResponseBody),
+            Arguments.of(prepareRequestBodyJson(correctSourceCurrency, correctTargetCurrency, incorrectMonetaryValue_negative), errorResponseStatus, errorResponseBody),
+            Arguments.of(prepareRequestBodyJson(correctSourceCurrency, correctTargetCurrency, incorrectMonetaryValue_null), errorResponseStatus, errorResponseBody),
+            Arguments.of(prepareRequestBodyJson(correctSourceCurrency, correctTargetCurrency, incorrectMonetaryValue_nullstr), errorResponseStatus, errorResponseBody),
+            Arguments.of(prepareRequestBodyJson(correctSourceCurrency, correctTargetCurrency, incorrectMonetaryValue_empty), errorResponseStatus, errorResponseBody),
+            Arguments.of(prepareRequestBodyJson(correctSourceCurrency, correctTargetCurrency, incorrectMonetaryValue_notnumeric), errorResponseStatus, errorResponseBody),
+            Arguments.of(prepareRequestBodyJson(correctSourceCurrency, correctTargetCurrency, incorrectMonetaryValue_notnumeric), errorResponseStatus, errorResponseBody),
             Arguments.of(String.format("{ \"sourceCurrency\": \"%s\", \"targetCurrency\": \"%s\" }", correctSourceCurrency, correctTargetCurrency), errorResponseStatus, errorResponseBody)
+        );
+    }
+
+    private static String prepareRequestBodyJson(
+        String sourceCurrency,
+        String targetCurrency,
+        String monetaryValue
+    ) {
+        return String.format(
+            "{ \"sourceCurrency\": \"%s\", \"targetCurrency\": \"%s\", \"monetaryValue\": %s }", 
+            sourceCurrency, 
+            targetCurrency, 
+            monetaryValue
         );
     }
 }
