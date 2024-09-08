@@ -1,0 +1,28 @@
+name: Workflow to build the Backend
+
+on:
+  push:
+    branches:
+      - main
+    paths: 
+      - backend/**
+
+jobs:
+  build_backend:
+    name: Build Backend
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: backend
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up JDK 17
+      uses: actions/setup-java@v4
+      with:
+        java-version: '17'
+        distribution: 'temurin'
+        cache: maven
+    - name: Build with Maven
+      working-directory: backend
+      run: mvn -B package --file pom.xml
+          
