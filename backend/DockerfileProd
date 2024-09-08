@@ -1,0 +1,21 @@
+FROM maven:3-eclipse-temurin-17-alpine 
+# prod
+LABEL author="Alisher Aliev"
+
+ARG SWOP_API_KEY
+ENV SWOP_API_KEY=${SWOP_API_KEY}
+
+EXPOSE 8080
+
+WORKDIR /backend
+
+RUN adduser -D -h /home/backender -s /bin/bash backender && \
+    chown -R backender:backender /backend 
+
+USER backender
+
+ARG JAR_FILE
+
+COPY --chown=backender:backender ${JAR_FILE} ./backend.jar
+
+ENTRYPOINT java -jar ./backend.jar
