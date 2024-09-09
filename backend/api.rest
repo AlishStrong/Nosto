@@ -4,7 +4,18 @@ content-type: application/json
 {
     "sourceCurrency": "USD",
     "targetCurrency": "GBP",
-    "monetaryValue": 30
+    "monetaryValue": 30342
+}
+
+####
+
+POST https://nosto.onrender.com/api HTTP/1.1
+content-type: application/json
+
+{
+    "sourceCurrency": "USD",
+    "targetCurrency": "GBP",
+    "monetaryValue": 1978
 }
 
 ####
