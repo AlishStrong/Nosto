@@ -16,11 +16,11 @@ public class SwopClientTest {
 
     @ParameterizedTest
     @MethodSource("requestData")
-    public void getSingleQuote(String apiKey, String targetCurrency) throws Exception {
+    public void getSingleRate(String apiKey, String targetCurrency) throws Exception {
         swopClient = new SwopClient(baseUrl, apiKey);
         assertThrows(
             HttpClientErrorException.class, 
-            () -> swopClient.getSingleQuote(targetCurrency)
+            () -> swopClient.getSingleRate(targetCurrency)
         );
     }
 

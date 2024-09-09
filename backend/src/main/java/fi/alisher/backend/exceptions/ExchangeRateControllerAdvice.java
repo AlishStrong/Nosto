@@ -26,15 +26,18 @@ public class ExchangeRateControllerAdvice {
 
     @ExceptionHandler(HttpClientErrorException.class)
     public ResponseEntity<String> handleHttpClientErrorException(HttpClientErrorException ex) {
-        System.out.println(ex.getResponseBodyAsString());
         SwopError errorResponseBody = ex.getResponseBodyAs(SwopError.class);
         return ResponseEntity.status(ex.getStatusCode()).body(errorResponseBody.getError().getMessage());
     }
 
     @ExceptionHandler(HttpServerErrorException.class)
     public ResponseEntity<String> handleHttpServerErrorException(HttpServerErrorException ex) {
-        System.out.println(ex.getResponseBodyAsString());
         SwopError errorResponseBody = ex.getResponseBodyAs(SwopError.class);
         return ResponseEntity.status(ex.getStatusCode()).body(errorResponseBody.getError().getMessage());
+    }
+
+    @ExceptionHandler(InvalidCurrencyCodeException.class)
+    public ResponseEntity<String> handleInvalidCurrencyCodeException(InvalidCurrencyCodeException ex) {
+        return ResponseEntity.status(HttpStatus.BAD_REQUEST).body(ex.getMessage());
     }
 }

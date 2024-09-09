@@ -1,6 +1,5 @@
 package fi.alisher.backend.clients;
 
-import java.math.BigDecimal;
 import java.util.Objects;
 
 import org.springframework.beans.factory.annotation.Value;
@@ -23,14 +22,14 @@ public class SwopClient {
             .build();
     }
 
-    public BigDecimal getSingleQuote(String targetCurrency) throws Exception {
+    public SwopRate getSingleRate(String targetCurrency) throws Exception {
         SwopRate body = this.restClient.get()
             .uri(String.format("/EUR/%s", targetCurrency))
             .retrieve()
             .body(SwopRate.class);
 
         if (Objects.nonNull(body)) {
-            return body.getQuote();
+            return body;
         } else {
             throw new Exception(String.format("No quote for EUR-%s", targetCurrency));
         }

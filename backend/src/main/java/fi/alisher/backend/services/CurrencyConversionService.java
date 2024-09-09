@@ -7,15 +7,19 @@ import org.springframework.stereotype.Service;
 
 import fi.alisher.backend.clients.SwopClient;
 import fi.alisher.backend.models.ExchangeRateRequestBody;
+import fi.alisher.backend.models.SwopRate;
 
 @Service
 public class CurrencyConversionService {
     private SwopClient swopClient;
+    private LocalCacheService cacheService;
 
     public CurrencyConversionService(
-        SwopClient swopClient
+        SwopClient swopClient,
+        LocalCacheService cacheService
     ) {
         this.swopClient = swopClient;
+        this.cacheService = cacheService;
     }
 
     public BigDecimal convertCurrency(ExchangeRateRequestBody body) throws Exception {
@@ -47,6 +51,13 @@ public class CurrencyConversionService {
     }
 
     private BigDecimal getQuote(String targetCurrency) throws Exception {
-        return swopClient.getSingleQuote(targetCurrency);
+        targetCurrency = targetCurrency.toUpperCase();
+        if (cacheService.isCached(targetCurrency)) {
+            return cacheService.getChachedQuote(targetCurrency);
+        } else {
+            SwopRate swopRate = swopClient.getSingleRate(targetCurrency);
+            cacheService.chacheSwopRate(swopRate);
+            return swopRate.getQuote();
+        }
     }
 }

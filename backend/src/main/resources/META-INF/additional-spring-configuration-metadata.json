@@ -1,0 +1,17 @@
+{"properties": [
+  {
+    "name": "swop.url",
+    "type": "java.lang.String",
+    "description": "URL of the SWOP service"
+  },
+  {
+    "name": "swop.apikey",
+    "type": "java.lang.String",
+    "description": "API key that needs to be added to requests to SWOP service. Sensitive!"
+  },
+  {
+    "name": "cache.ttl",
+    "type": "java.lang.String",
+    "description": "Time to live of a local cache in seconds"
+  }
+]}
