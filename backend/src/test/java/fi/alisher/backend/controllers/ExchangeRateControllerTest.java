@@ -14,6 +14,7 @@ import org.springframework.web.servlet.LocaleResolver;
 
 import fi.alisher.backend.models.ExchangeRateRequestBody;
 import fi.alisher.backend.services.CurrencyConversionService;
+import fi.alisher.backend.services.LocalCacheService;
 import jakarta.servlet.http.HttpServletRequest;
 
 import java.math.BigDecimal;
@@ -37,6 +38,9 @@ public class ExchangeRateControllerTest {
     @MockBean
     private CurrencyConversionService conversionService;
 
+    @MockBean
+    private LocalCacheService cacheService;
+
     @ParameterizedTest
     @MethodSource("requestSuccessData")
     public void convertCurrency_successCases(
@@ -53,7 +57,8 @@ public class ExchangeRateControllerTest {
             .content(requestBodyJson))
             .andExpect(status().isOk())
             .andExpect(jsonPath("$.localeFormattedConvertedValue").value(localeFormattedConvertedValue))
-            .andExpect(jsonPath("$.locale").value(Objects.nonNull(locale) ? locale.toString() : Locale.US.toString()));
+            .andExpect(jsonPath("$.locale").value(Objects.nonNull(locale) ? locale.toString() : Locale.US.toString()))
+            .andExpect(header().exists("Cache-Control"));
     }
 
     @ParameterizedTest

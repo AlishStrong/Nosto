@@ -45,4 +45,42 @@ public class LocalCacheServiceTest {
             localCacheService.isCached(targetCurrency);
         }, String.format("%s is not a valid ISO 4217 currency code", targetCurrency));
     }
+
+    @Test
+    void testGetRemainingTTL_fresh() throws InvalidCurrencyCodeException {
+        String targetCurrency = "USD";
+        SwopRate swopRate = new SwopRate();
+        swopRate.setQuoteCurrency(targetCurrency);
+
+        localCacheService.chacheSwopRate(swopRate);
+        assertTrue(localCacheService.isCached(targetCurrency));
+
+        long remainingTTL = localCacheService.getRemainingTTL(targetCurrency);
+        assertTrue(remainingTTL > 0 && remainingTTL <= testTTL);
+    }
+
+    @Test
+    void testGetRemainingTTL_expired() throws InvalidCurrencyCodeException, InterruptedException {
+        String targetCurrency = "USD";
+        SwopRate swopRate = new SwopRate();
+        swopRate.setQuoteCurrency(targetCurrency);
+
+        localCacheService.chacheSwopRate(swopRate);
+        assertTrue(localCacheService.isCached(targetCurrency));
+
+        Thread.sleep(testTTL*1500);
+
+        long remainingTTL = localCacheService.getRemainingTTL(targetCurrency);
+        assertTrue(remainingTTL == 0);
+    }
+
+    @Test
+    void testGetRemainingTTL_doesNotExist() throws InvalidCurrencyCodeException, InterruptedException {
+        String targetCurrency = "USD";
+
+        assertFalse(localCacheService.isCached(targetCurrency));
+
+        long remainingTTL = localCacheService.getRemainingTTL(targetCurrency);
+        assertTrue(remainingTTL == 0);
+    }
 }

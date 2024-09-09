@@ -2,6 +2,7 @@ package fi.alisher.backend.services;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
+import java.time.ZonedDateTime;
 import java.util.Currency;
 import java.util.Objects;
 import java.util.Set;
@@ -30,7 +31,7 @@ public class LocalCacheService {
     public boolean isCached(String targetCurrency) throws InvalidCurrencyCodeException {
         isValidCurrencyCode(targetCurrency);
         SwopRateCache cachedRate = cacheMap.get(targetCurrency);
-        return Objects.nonNull(cachedRate) && LocalDateTime.now().isBefore(cachedRate.getExpirationDateTime());
+        return Objects.nonNull(cachedRate) && ZonedDateTime.now().isBefore(cachedRate.getExpirationDateTime());
     }
 
     public BigDecimal getChachedQuote(String targetCurrency) {
@@ -38,8 +39,18 @@ public class LocalCacheService {
     }
 
     public void chacheSwopRate(SwopRate swopRate) {
-        SwopRateCache cache = new SwopRateCache(swopRate, LocalDateTime.now().plusSeconds(ttl));
+        SwopRateCache cache = new SwopRateCache(swopRate, ZonedDateTime.now().plusSeconds(ttl));
         cacheMap.put(cache.getQuoteCurrency(), cache);
+    }
+
+    public long getRemainingTTL(String targetCurrency) {
+        ZonedDateTime now = ZonedDateTime.now();
+        SwopRateCache cachedRate = cacheMap.get(targetCurrency);
+        if (Objects.nonNull(cachedRate) && now.isBefore(cachedRate.getExpirationDateTime())) {
+            return cachedRate.getExpirationDateTime().toEpochSecond() - now.toEpochSecond();
+        } else {
+            return 0;
+        }
     }
 
     private boolean isValidCurrencyCode(String code) throws InvalidCurrencyCodeException {
