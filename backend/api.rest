@@ -1,10 +1,11 @@
 POST http://localhost:8080/api HTTP/1.1
 content-type: application/json
+Accept-Language: de-DE
 
 {
     "sourceCurrency": "USD",
     "targetCurrency": "GBP",
-    "monetaryValue": 30342
+    "monetaryValue": 30342.15
 }
 
 ####
